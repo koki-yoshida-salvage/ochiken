@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>投稿編集 (ID: {{ post.id }})</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .edit-form { padding: 15px; border: 1px solid #ddd; margin-bottom: 20px; background-color: #f9f9f9; }
+        textarea { width: 98%; padding: 10px; border: 1px solid #ccc; }
+        .back-link { display: inline-block; margin-top: 20px; padding: 8px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>投稿編集 (ID: {{ post.id }})</h1>
+
+    <div class="edit-form">
+        <form method="POST" action="{{ url_for('update', id=post.id) }}">
+            <textarea name="content" required rows="10" placeholder="投稿内容を修正してください">{{ post.content }}</textarea>
+            <br>
+            <button type="submit">内容を更新する</button>
+        </form>
+    </div>
+
+    <a href="{{ url_for('index') }}" class="back-link">トップページに戻る</a>
+
+</body>
+</html>

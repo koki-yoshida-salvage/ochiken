@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>掲示板アプリ</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .post-form { padding: 15px; border: 1px solid #ddd; margin-bottom: 20px; background-color: #f9f9f9; }
+        .post { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; background-color: #fff; }
+        .info { font-size: small; color: #666; border-bottom: 1px dashed #eee; padding-bottom: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        textarea { width: 98%; padding: 10px; border: 1px solid #ccc; }
+        .delete-btn { background-color: #f44336; color: white; border: none; padding: 5px 10px; font-size: 12px; cursor: pointer; border-radius: 3px; margin-left: 5px; }
+        .edit-btn { background-color: #007bff; color: white; border: none; padding: 5px 10px; font-size: 12px; cursor: pointer; border-radius: 3px; text-decoration: none; }
+        .message-success { color: green; border: 1px solid green; padding: 10px; margin-bottom: 10px; }
+        .message-error { color: red; border: 1px solid red; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div style="text-align: right; margin-bottom: 10px;">
+        {% if current_user.is_authenticated %}
+            <span style="margin-right: 15px;">ようこそ、**{{ current_user.username }}**さん！</span>
+            <a href="{{ url_for('logout') }}" class="edit-btn" style="background-color: #ffc107; color: black;">ログアウト</a>
+        {% else %}
+            <a href="{{ url_for('register') }}" class="edit-btn">新規登録</a>
+            <a href="{{ url_for('login') }}" class="edit-btn">ログイン</a>
+        {% endif %}
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="message-{{ category | default('success') }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <h1>掲示板トップ</h1>
+
+    {% if current_user.is_authenticated %}
+    <div class="post-form">
+        <h2>新規投稿</h2>
+        <form method="POST" action="{{ url_for('post_message') }}">
+            <textarea name="content" required rows="5" placeholder="ここに投稿内容を書いてください"></textarea>
+            <br>
+            <button type="submit">書き込む</button>
+        </form>
+    </div>
+    {% else %}
+    <p>投稿するには、<a href="{{ url_for('login') }}">ログイン</a>または<a href="{{ url_for('register') }}">新規登録</a>が必要です。</p>
+    {% endif %}
+
+    <hr>
+
+    <h2>投稿一覧</h2>
+
+    {% for post in posts %}
+    <div class="post">
+        <div class="info">
+            <span>
+                No. {{ post.id }} | 投稿日時: {{ post.created_at.strftime('%Y/%m/%d %H:%M:%S') }}
+                | **投稿者: {{ post.author.username }}** </span>
+            <div>
+                {% if current_user.is_authenticated and current_user.id == post.user_id %}
+                <a href="{{ url_for('edit', id=post.id) }}" class="edit-btn">編集</a>
+                
+                <form method="POST" action="{{ url_for('delete', id=post.id) }}" style="display: inline;">
+                    <button type="submit" class="delete-btn" onclick="return confirm('本当にこの投稿を削除しますか？');">削除</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        
+        <p>{{ post.content }}</p>
+    </div>
+    {% else %}
+    <p>まだ投稿がありません。</p>
+    {% endfor %}
+
+</body>
+</html>

@@ -1,0 +1,22 @@
+# render.yaml
+
+databases:
+  - name: mybbs_db
+    databaseName: mybbs
+    user: mybbs_user
+
+services:
+  - type: web
+    name: my-flask-bbs
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app_10:app" # ★app_10に変更
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mybbs_db
+          property: connectionString
