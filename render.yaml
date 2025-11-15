@@ -1,5 +1,3 @@
-# render.yaml
-
 databases:
   - name: mybbs_db
     databaseName: mybbs
@@ -10,18 +8,9 @@ services:
   - type: web
     name: my-flask-bbs
     env: python
-    # ★★★ ここに閉じクォーテーションを追加してください ★★★
-    # render.yaml
-
-services:
-  # ...
-  - type: web
-    name: my-flask-bbs
-    env: python
-    # ★★★ この行を以下の新しいコマンドに置き換えます ★★★
+    # ★★★ 最終的にシンプルなコマンドに戻します ★★★
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn app_10:app"
-    # ...
     plan: free
     healthCheckPath: /
     envVars:
