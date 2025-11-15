@@ -204,6 +204,16 @@ def delete(id):
         flash('投稿の削除中にエラーが発生しました。', 'error')
         return redirect(url_for('index'))
 
-# 6. アプリケーションの実行 (開発時のみ)
+# app_10.py (ファイルの最下部に追加)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    import sys
+    # RenderのbuildCommandで指定した 'db_init' フラグを受け取ったら実行
+    if len(sys.argv) > 1 and sys.argv[1] == 'db_init':
+        with app.app_context():
+            db.create_all()
+            print("Database tables created successfully by buildCommand!")
+    else:
+        # ローカルで通常起動する場合の処理があればここに記述
+        # 例: app.run(debug=True)
+        pass
