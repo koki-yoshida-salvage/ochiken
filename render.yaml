@@ -4,6 +4,7 @@ databases:
   - name: mybbs_db
     databaseName: mybbs
     user: mybbs_user
+    plan: free #　追加箇所
 
 services:
   - type: web
