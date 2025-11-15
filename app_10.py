@@ -61,7 +61,8 @@ class User(db.Model, UserMixin):
 # 5. データベーステーブルの作成
 # 開発環境でSQLiteを使うために残す（本番環境ではマイグレーションツール推奨）
 with app.app_context():
-    db.create_all()
+    db.drop_all()  # 👈 古いテーブルを削除
+    db.create_all() # 👈 新しい（サイズ256の）テーブルを作成
 
 
 # ----------------------------------------------------
