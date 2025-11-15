@@ -11,7 +11,7 @@ services:
     name: my-flask-bbs
     env: python
     # ★★★ ここに閉じクォーテーションを追加してください ★★★
-    buildCommand: "pip install -r requirements.txt && python app_10.py db_init"
+    buildCommand: "pip install -r requirements.txt && python -c 'from app_10 import db, app; with app.app_context(): db.create_all()'"
     startCommand: "gunicorn app_10:app"
     plan: free
     healthCheckPath: /
