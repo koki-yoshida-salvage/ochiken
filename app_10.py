@@ -69,9 +69,9 @@ class User(db.Model, UserMixin):
 
 # 5. データベーステーブルの作成（モデル定義の直後で実行されます！）
 # デプロイ時に新しいテーブル定義を強制的に反映させるための一時的なコードです。
-with app.app_context():
-    db.drop_all() 
-    db.create_all()
+#with app.app_context():
+#    db.drop_all() 
+#    db.create_all()
 
 
 # ----------------------------------------------------
