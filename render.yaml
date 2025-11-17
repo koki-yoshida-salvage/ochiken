@@ -9,7 +9,7 @@ services:
     name: my-flask-bbs
     env: python
     # ★★★ 最終的にシンプルなコマンドに戻します ★★★
-    buildCommand: "pip install -r requirements.txt"
+    buildCommand: "pip install -r requirements.txt && python -c 'from app_10 import db, app; with app.app_context(): db.drop_all(); db.create_all()'"
     startCommand: "gunicorn app_10:app"
     plan: free
     healthCheckPath: /

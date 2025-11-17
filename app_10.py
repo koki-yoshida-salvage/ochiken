@@ -32,14 +32,31 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 # 4. データベースモデルの定義
+
+# -----------------
+# ★ Thread と Post モデルの追加 ★
+# -----------------
+
+class Thread(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    # ユーザー名を取得するためのリレーション
+    author = db.relationship('User', backref='threads', lazy=True)
+    # このスレッドに紐づく全ての投稿を取得するためのリレーション
+    posts = db.relationship('Post', backref='thread', lazy='dynamic', cascade="all, delete-orphan")
+
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # 投稿者IDを保存するカラムとUserモデルへのリレーションシップ
+    thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    author = db.relationship('User', backref=db.backref('posts', lazy=True))
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    # ユーザー名を取得するためのリレーション
+    author = db.relationship('User', backref='posts', lazy=True)
 
     def __repr__(self):
         return f'<Post {self.id}>'
