@@ -5,15 +5,12 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash 
 from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required, current_user 
-import os # 環境変数読み込み用
+import os 
 
 # 1. Flaskアプリケーションの初期化と設定
 app = Flask(__name__)
 
-# 環境変数からSECRET_KEYとDATABASE_URLを取得
-# SECRET_KEYが設定されていない場合は、開発用の鍵を使用
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_strong_secret_key_here') 
-# デプロイ先で設定されるDATABASE_URLを優先し、なければSQLiteを使用
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///board.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -28,13 +25,11 @@ login_manager.login_message = "ログインが必要です。"
 
 @login_manager.user_loader
 def load_user(user_id):
-    # LegacyAPIWarningを避けるため、get_or_404を使用するか、Session.get()を使用するのが望ましい
     return db.session.get(User, int(user_id))
 
 # 4. データベースモデルの定義
-
 # -----------------
-# ★ Thread と Post モデルの追加 ★
+# ★ Thread と Post モデルの定義 ★
 # -----------------
 
 class Thread(db.Model):
@@ -43,9 +38,7 @@ class Thread(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
-    # ユーザー名を取得するためのリレーション
     author = db.relationship('User', backref='threads', lazy=True)
-    # このスレッドに紐づく全ての投稿を取得するためのリレーション
     posts = db.relationship('Post', backref='thread', lazy='dynamic', cascade="all, delete-orphan")
 
 class Post(db.Model):
@@ -55,7 +48,6 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
-    # ユーザー名を取得するためのリレーション
     author = db.relationship('User', backref='posts', lazy=True)
 
     def __repr__(self):
@@ -75,10 +67,10 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f'<User {self.username}>'
 
-# 5. データベーステーブルの作成
-# 開発環境でSQLiteを使うために残す（本番環境ではマイグレーションツール推奨）
+# 5. データベーステーブルの作成（モデル定義の直後で実行されます！）
+# デプロイ時に新しいテーブル定義を強制的に反映させるための一時的なコードです。
 with app.app_context():
-    db.drop_all()        # （必要に応じて既存テーブルを削除）
+    db.drop_all() 
     db.create_all()
 
 
@@ -92,7 +84,6 @@ def register():
         username = request.form['username']
         password = request.form['password']
         
-        # ユーザー名重複チェック
         if db.session.execute(db.select(User).filter_by(username=username)).first():
             flash('そのユーザー名はすでに使われています。', 'error')
             return redirect(url_for('register'))
@@ -134,40 +125,68 @@ def logout():
 
 
 # ----------------------------------------------------
-# 投稿関連のルーティング (本人確認ロジックを含む)
+# 掲示板のルーティング (スレッド対応版)
 # ----------------------------------------------------
 
-# トップページ (Read)
+# トップページ (スレッド一覧表示)
 @app.route('/')
 def index():
-    posts = db.session.execute(db.select(Post).order_by(Post.id.desc())).scalars().all()
-    return render_template('index_10.html', posts=posts) 
+    # Threadモデルから一覧を取得
+    threads = db.session.execute(db.select(Thread).order_by(Thread.created_at.desc())).scalars().all()
+    
+    # index_10.htmlでthreadsを受け取るようにHTML側の修正が必要です。
+    return render_template('index_10.html', threads=threads) 
 
-# 投稿処理 (Create)
+# 新規スレッド作成フォーム表示
+@app.route('/create_thread')
+@login_required 
+def create_thread_form():
+    # テンプレートファイルが必要です: thread_create_10.html 
+    return render_template('thread_create_10.html')
+
+# 新規スレッド作成処理 (Create)
+@app.route('/create_thread', methods=['POST'])
+@login_required 
+def create_thread():
+    title = request.form['title']
+    content = request.form['content'] 
+    
+    if not title or not content:
+        flash('タイトルと本文を入力してください。', 'error')
+        return redirect(url_for('create_thread_form'))
+    
+    # 1. スレッド本体を作成
+    new_thread = Thread(title=title, user_id=current_user.id)
+    db.session.add(new_thread)
+    db.session.commit() 
+
+    # 2. スレッドの最初の投稿を作成 
+    first_post = Post(content=content, thread_id=new_thread.id, user_id=current_user.id)
+    db.session.add(first_post)
+    db.session.commit()
+
+    flash('新しいスレッドを作成しました。', 'success')
+    return redirect(url_for('index'))
+
+
+# ----------------------------------------------------
+# 投稿関連の古いルーティング（一時的な措置）
+# ----------------------------------------------------
+
+# /post ルーティングは一時的にエラーを出すように変更
 @app.route('/post', methods=['POST'])
 @login_required 
 def post_message():
-    post_content = request.form['content'] 
-    
-    # ログイン中のユーザーIDを保存
-    new_post = Post(content=post_content, user_id=current_user.id)
-    
-    db.session.add(new_post)
-    db.session.commit()
-
-    flash('投稿が完了しました。', 'success')
+    flash('エラー: スレッド機能に移行中のため、この投稿は現在使用できません。', 'error')
     return redirect(url_for('index'))
 
 # 編集フォーム表示 (Update - フォーム表示)
 @app.route('/edit/<int:id>')
 @login_required 
 def edit(id):
-    # 投稿が存在しない場合は404エラー
     post_to_edit = db.session.get(Post, id)
     if post_to_edit is None:
         abort(404)
-
-    # ★本人確認ロジック：投稿者と現在のユーザーが一致しない場合はアクセス拒否
     if post_to_edit.user_id != current_user.id:
         flash('他のユーザーの投稿は編集できません。', 'error')
         return redirect(url_for('index'))
@@ -181,14 +200,11 @@ def update(id):
     post_to_update = db.session.get(Post, id)
     if post_to_update is None:
         abort(404)
-        
-    # ★本人確認ロジック
     if post_to_update.user_id != current_user.id:
         flash('他のユーザーの投稿は更新できません。', 'error')
         return redirect(url_for('index'))
         
     new_content = request.form['content']
-    
     post_to_update.content = new_content
     
     try:
@@ -206,8 +222,6 @@ def delete(id):
     post_to_delete = db.session.get(Post, id)
     if post_to_delete is None:
         abort(404)
-
-    # ★本人確認ロジック
     if post_to_delete.user_id != current_user.id:
         flash('他のユーザーの投稿は削除できません。', 'error')
         return redirect(url_for('index'))
@@ -222,16 +236,6 @@ def delete(id):
         flash('投稿の削除中にエラーが発生しました。', 'error')
         return redirect(url_for('index'))
 
-# app_10.py (ファイルの最下部に追加)
-
+# app_10.py (ファイルの最下部)
 if __name__ == '__main__':
-    import sys
-    # RenderのbuildCommandで指定した 'db_init' フラグを受け取ったら実行
-    if len(sys.argv) > 1 and sys.argv[1] == 'db_init':
-        with app.app_context():
-            db.create_all()
-            print("Database tables created successfully by buildCommand!")
-    else:
-        # ローカルで通常起動する場合の処理があればここに記述
-        # 例: app.run(debug=True)
-        pass
+    pass
