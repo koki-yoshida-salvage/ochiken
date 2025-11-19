@@ -3,14 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>ログイン</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .form-container { padding: 20px; border: 1px solid #ccc; max-width: 400px; margin: 20px auto; }
-        input[type="text"], input[type="password"] { width: 90%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; }
-        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; }
-        .message-error { color: red; border: 1px solid red; padding: 10px; margin-bottom: 10px; }
-        .message-success { color: green; border: 1px solid green; padding: 10px; margin-bottom: 10px; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="form-container">
