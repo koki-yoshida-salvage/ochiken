@@ -236,6 +236,47 @@ def delete(id):
         flash('投稿の削除中にエラーが発生しました。', 'error')
         return redirect(url_for('index'))
 
+# app_10.py の適切な場所（例: 掲示板のルーティングセクションの最後）に追加
+
+# スレッド詳細表示と返信フォーム
+@app.route('/thread/<int:thread_id>')
+def thread_detail(thread_id):
+    # スレッド本体と、そのスレッドに紐づく全ての投稿を読み込む
+    thread = db.session.get(Thread, thread_id)
+    
+    # スレッドが存在しない場合は404エラー
+    if thread is None:
+        abort(404)
+        
+    # 投稿は新しいもの順に表示
+    posts = db.session.execute(
+        db.select(Post)
+        .filter_by(thread_id=thread_id)
+        .order_by(Post.created_at.asc()) # 古いもの順に表示
+    ).scalars().all()
+    
+    return render_template('thread_detail_10.html', thread=thread, posts=posts)
+
+# スレッドへの返信処理
+@app.route('/post_to_thread/<int:thread_id>', methods=['POST'])
+@login_required
+def post_to_thread(thread_id):
+    thread = db.session.get(Thread, thread_id)
+    if thread is None:
+        abort(404)
+        
+    content = request.form['content']
+    if not content:
+        flash('本文を入力してください。', 'error')
+        return redirect(url_for('thread_detail', thread_id=thread_id))
+
+    new_post = Post(content=content, thread_id=thread_id, user_id=current_user.id)
+    db.session.add(new_post)
+    db.session.commit()
+    
+    flash('投稿が完了しました。', 'success')
+    return redirect(url_for('thread_detail', thread_id=thread_id))
+
 # app_10.py (ファイルの最下部)
 if __name__ == '__main__':
     pass

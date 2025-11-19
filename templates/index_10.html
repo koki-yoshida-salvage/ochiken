@@ -52,7 +52,7 @@
                 {% for thread in threads %}
                     <div class="thread-item">
                         <h3 class="thread-title">
-                            <a href="#">{{ thread.title }}</a>
+                            <a href="{{ url_for('thread_detail', thread_id=thread.id) }}">{{ thread.title }}</a>
                         </h3>
                         <p class="thread-meta">
                             作成者: <strong>{{ thread.author.username }}</strong>
