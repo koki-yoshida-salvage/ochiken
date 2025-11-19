@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ thread.title }}</title>
+    <style>
+        /* CSSファイルがなくても見やすくするためのスタイル */
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .post-item { background: #f9f9f9; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        .post-meta { font-size: 0.85em; color: #555; margin-bottom: 5px; }
+        .reply-section { background: #eef; padding: 15px; margin-top: 30px; border-radius: 5px; }
+        textarea { width: 100%; height: 100px; margin-bottom: 10px; }
+        button { padding: 10px 20px; font-weight: bold; cursor: pointer; }
+        a { color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <p><a href="{{ url_for('index') }}">← スレッド一覧に戻る</a></p>
+    
+    <h1>{{ thread.title }}</h1>
+    <p>
+        作成者: <strong>{{ thread.author.username }}</strong>
+        | 作成日時: {{ thread.created_at.strftime('%Y-%m-%d %H:%M') }}
+    </p>
+
+    <hr>
+
+    <h2>投稿一覧</h2>
+    <div class="post-list">
+        {% for post in posts %}
+            <div class="post-item">
+                <div class="post-meta">
+                    {{ loop.index }} : 
+                    <strong>{{ post.author.username }}</strong> 
+                    ({{ post.created_at.strftime('%Y-%m-%d %H:%M') }})
+                </div>
+                <div class="post-content">
+                    {{ post.content | replace('\n', '<br>') | safe }}
+                </div>
+            </div>
+        {% else %}
+            <p>まだ投稿がありません。</p>
+        {% endfor %}
+    </div>
+
+    {% if current_user.is_authenticated %}
+        <div class="reply-section">
+            <h3>返信する</h3>
+            <form method="POST" action="{{ url_for('post_to_thread', thread_id=thread.id) }}">
+                <div>
+                    <textarea name="content" required placeholder="ここに本文を入力してください"></textarea>
+                </div>
+                <button type="submit">書き込む</button>
+            </form>
+        </div>
+    {% else %}
+        <p style="margin-top: 30px;">
+            返信するには <a href="{{ url_for('login') }}">ログイン</a> してください。
+        </p>
+    {% endif %}
+
+</body>
+</html>
