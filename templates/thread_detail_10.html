@@ -5,12 +5,23 @@
     <title>{{ thread.title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-</head>
 <body>
+    <div class="container">
 
     <p><a href="{{ url_for('index') }}">← スレッド一覧に戻る</a></p>
     
     <h1>{{ thread.title }}</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
     <p>
         作成者: <strong>{{ thread.author.username }}</strong>
         | 作成日時: {{ thread.created_at.strftime('%Y-%m-%d %H:%M') }}
@@ -26,6 +37,18 @@
                     {{ loop.index }} : 
                     <strong>{{ post.author.username }}</strong> 
                     ({{ post.created_at.strftime('%Y-%m-%d %H:%M') }})
+
+                    {# ★削除ボタン追加エリア★ #}
+                    {% if current_user.is_authenticated and post.user_id == current_user.id %}
+                        <span style="margin-left: 15px;">
+                            <a href="{{ url_for('delete', id=post.id) }}" 
+                               onclick="return confirm('本当に削除しますか？\n(スレッドの最初の投稿の場合、スレッドごと削除されます)')"
+                               class="button" 
+                               style="background-color: #dc3545; padding: 2px 8px; font-size: 0.8em;">削除</a>
+                        </span>
+                    {% endif %}
+                    {# ★ここまで★ #}
+
                 </div>
                 <div class="post-content">
                     {{ post.content | replace('\n', '<br>') | safe }}
@@ -40,10 +63,10 @@
         <div class="reply-section">
             <h3>返信する</h3>
             <form method="POST" action="{{ url_for('post_to_thread', thread_id=thread.id) }}">
-                <div>
+                <div class="form-group">
                     <textarea name="content" required placeholder="ここに本文を入力してください"></textarea>
                 </div>
-                <button type="submit">書き込む</button>
+                <button type="submit" class="button">書き込む</button>
             </form>
         </div>
     {% else %}
@@ -52,5 +75,6 @@
         </p>
     {% endif %}
 
+    </div>
 </body>
 </html>

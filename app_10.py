@@ -28,9 +28,6 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 # 4. データベースモデルの定義
-# -----------------
-# ★ Thread と Post モデルの定義 ★
-# -----------------
 
 class Thread(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -39,6 +36,7 @@ class Thread(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     author = db.relationship('User', backref='threads', lazy=True)
+    # cascade="all, delete-orphan" により、スレッド削除時に投稿も自動削除
     posts = db.relationship('Post', backref='thread', lazy='dynamic', cascade="all, delete-orphan")
 
 class Post(db.Model):
@@ -66,12 +64,6 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return f'<User {self.username}>'
-
-# 5. データベーステーブルの作成（モデル定義の直後で実行されます！）
-# デプロイ時に新しいテーブル定義を強制的に反映させるための一時的なコードです。
-#with app.app_context():
-#    db.drop_all() 
-#    db.create_all()
 
 
 # ----------------------------------------------------
@@ -125,26 +117,22 @@ def logout():
 
 
 # ----------------------------------------------------
-# 掲示板のルーティング (スレッド対応版)
+# 掲示板のルーティング
 # ----------------------------------------------------
 
 # トップページ (スレッド一覧表示)
 @app.route('/')
 def index():
-    # Threadモデルから一覧を取得
     threads = db.session.execute(db.select(Thread).order_by(Thread.created_at.desc())).scalars().all()
-    
-    # index_10.htmlでthreadsを受け取るようにHTML側の修正が必要です。
     return render_template('index_10.html', threads=threads) 
 
 # 新規スレッド作成フォーム表示
 @app.route('/create_thread')
 @login_required 
 def create_thread_form():
-    # テンプレートファイルが必要です: thread_create_10.html 
     return render_template('thread_create_10.html')
 
-# 新規スレッド作成処理 (Create)
+# 新規スレッド作成処理
 @app.route('/create_thread', methods=['POST'])
 @login_required 
 def create_thread():
@@ -155,12 +143,10 @@ def create_thread():
         flash('タイトルと本文を入力してください。', 'error')
         return redirect(url_for('create_thread_form'))
     
-    # 1. スレッド本体を作成
     new_thread = Thread(title=title, user_id=current_user.id)
     db.session.add(new_thread)
     db.session.commit() 
 
-    # 2. スレッドの最初の投稿を作成 
     first_post = Post(content=content, thread_id=new_thread.id, user_id=current_user.id)
     db.session.add(first_post)
     db.session.commit()
@@ -168,91 +154,17 @@ def create_thread():
     flash('新しいスレッドを作成しました。', 'success')
     return redirect(url_for('index'))
 
-
-# ----------------------------------------------------
-# 投稿関連の古いルーティング（一時的な措置）
-# ----------------------------------------------------
-
-# /post ルーティングは一時的にエラーを出すように変更
-@app.route('/post', methods=['POST'])
-@login_required 
-def post_message():
-    flash('エラー: スレッド機能に移行中のため、この投稿は現在使用できません。', 'error')
-    return redirect(url_for('index'))
-
-# 編集フォーム表示 (Update - フォーム表示)
-@app.route('/edit/<int:id>')
-@login_required 
-def edit(id):
-    post_to_edit = db.session.get(Post, id)
-    if post_to_edit is None:
-        abort(404)
-    if post_to_edit.user_id != current_user.id:
-        flash('他のユーザーの投稿は編集できません。', 'error')
-        return redirect(url_for('index'))
-        
-    return render_template('edit_10.html', post=post_to_edit)
-
-# データ更新処理 (Update - 実行)
-@app.route('/update/<int:id>', methods=['POST'])
-@login_required 
-def update(id):
-    post_to_update = db.session.get(Post, id)
-    if post_to_update is None:
-        abort(404)
-    if post_to_update.user_id != current_user.id:
-        flash('他のユーザーの投稿は更新できません。', 'error')
-        return redirect(url_for('index'))
-        
-    new_content = request.form['content']
-    post_to_update.content = new_content
-    
-    try:
-        db.session.commit()
-        flash('投稿を更新しました。', 'success')
-        return redirect(url_for('index'))
-    except:
-        flash('投稿内容の更新中にエラーが発生しました', 'error')
-        return redirect(url_for('index'))
-
-# 削除処理 (Delete)
-@app.route('/delete/<int:id>', methods=['POST'])
-@login_required 
-def delete(id):
-    post_to_delete = db.session.get(Post, id)
-    if post_to_delete is None:
-        abort(404)
-    if post_to_delete.user_id != current_user.id:
-        flash('他のユーザーの投稿は削除できません。', 'error')
-        return redirect(url_for('index'))
-
-    try:
-        db.session.delete(post_to_delete)
-        db.session.commit()
-        flash('投稿を削除しました。', 'success')
-        return redirect(url_for('index'))
-    except Exception as e:
-        print(f"削除エラー: {e}")
-        flash('投稿の削除中にエラーが発生しました。', 'error')
-        return redirect(url_for('index'))
-
-# app_10.py の適切な場所（例: 掲示板のルーティングセクションの最後）に追加
-
-# スレッド詳細表示と返信フォーム
+# スレッド詳細表示
 @app.route('/thread/<int:thread_id>')
 def thread_detail(thread_id):
-    # スレッド本体と、そのスレッドに紐づく全ての投稿を読み込む
     thread = db.session.get(Thread, thread_id)
-    
-    # スレッドが存在しない場合は404エラー
     if thread is None:
         abort(404)
         
-    # 投稿は新しいもの順に表示
     posts = db.session.execute(
         db.select(Post)
         .filter_by(thread_id=thread_id)
-        .order_by(Post.created_at.asc()) # 古いもの順に表示
+        .order_by(Post.created_at.asc())
     ).scalars().all()
     
     return render_template('thread_detail_10.html', thread=thread, posts=posts)
@@ -272,11 +184,95 @@ def post_to_thread(thread_id):
 
     new_post = Post(content=content, thread_id=thread_id, user_id=current_user.id)
     db.session.add(new_post)
-    db.session.commit()
     
-    flash('投稿が完了しました。', 'success')
+    try:
+        db.session.commit()
+        flash('投稿が完了しました。', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"データベースエラー: {e}")
+        flash('投稿中に予期せぬエラーが発生しました。', 'error')
+        
     return redirect(url_for('thread_detail', thread_id=thread_id))
 
-# app_10.py (ファイルの最下部)
+# 投稿編集フォーム (Update - Form)
+@app.route('/edit/<int:id>')
+@login_required 
+def edit(id):
+    post_to_edit = db.session.get(Post, id)
+    if post_to_edit is None:
+        abort(404)
+    if post_to_edit.user_id != current_user.id:
+        flash('他のユーザーの投稿は編集できません。', 'error')
+        return redirect(url_for('thread_detail', thread_id=post_to_edit.thread_id))
+        
+    return render_template('edit_10.html', post=post_to_edit)
+
+# データ更新処理 (Update - Action)
+@app.route('/update/<int:id>', methods=['POST'])
+@login_required 
+def update(id):
+    post_to_update = db.session.get(Post, id)
+    if post_to_update is None:
+        abort(404)
+    if post_to_update.user_id != current_user.id:
+        flash('他のユーザーの投稿は更新できません。', 'error')
+        return redirect(url_for('thread_detail', thread_id=post_to_update.thread_id))
+        
+    new_content = request.form['content']
+    post_to_update.content = new_content
+    
+    try:
+        db.session.commit()
+        flash('投稿を更新しました。', 'success')
+        return redirect(url_for('thread_detail', thread_id=post_to_update.thread_id))
+    except:
+        flash('更新中にエラーが発生しました', 'error')
+        return redirect(url_for('thread_detail', thread_id=post_to_update.thread_id))
+
+# ★ 削除処理 (Delete - Modified for Threads) ★
+@app.route('/delete/<int:id>') # GETリクエストで動作するようにしています（ボタンのリンク）
+@login_required 
+def delete(id):
+    post_to_delete = db.session.get(Post, id)
+    
+    if post_to_delete is None:
+        flash('削除対象の投稿が見つかりませんでした。', 'error')
+        return redirect(url_for('index'))
+
+    # ユーザー認証
+    if post_to_delete.user_id != current_user.id:
+        flash('他のユーザーの投稿は削除できません。', 'error')
+        return redirect(url_for('thread_detail', thread_id=post_to_delete.thread_id))
+
+    thread_id = post_to_delete.thread_id
+    
+    try:
+        # もしこの投稿が「スレッドの最初の投稿」だった場合、スレッドごと削除する
+        # （スレッドの最初の投稿を取得して比較）
+        first_post = db.session.execute(
+            db.select(Post).filter_by(thread_id=thread_id).order_by(Post.created_at.asc())
+        ).scalars().first()
+
+        if post_to_delete.id == first_post.id:
+            # スレッドの持ち主（最初の投稿者）が削除する場合、スレッド自体を削除
+            thread_to_delete = db.session.get(Thread, thread_id)
+            db.session.delete(thread_to_delete)
+            db.session.commit()
+            flash('スレッド全体が削除されました。', 'success')
+            return redirect(url_for('index'))
+        else:
+            # 通常のレス削除
+            db.session.delete(post_to_delete)
+            db.session.commit()
+            flash('投稿を削除しました。', 'success')
+            return redirect(url_for('thread_detail', thread_id=thread_id))
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"削除エラー: {e}")
+        flash(f'削除中にエラーが発生しました。', 'error')
+        return redirect(url_for('thread_detail', thread_id=thread_id))
+
 if __name__ == '__main__':
     pass
