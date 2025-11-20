@@ -38,7 +38,32 @@
                     <strong>{{ post.author.username }}</strong> 
                     ({{ post.created_at.strftime('%Y-%m-%d %H:%M') }})
 
-                    {# ★削除ボタン追加エリア★ #}
+                    {# ★ いいねボタンエリア開始 ★ #}
+                    <span style="margin-left: 15px;">
+                        {% if current_user.is_authenticated %}
+                            {# フォームを使ってPOST送信でいいねを切り替え #}
+                            <form action="{{ url_for('toggle_like', post_id=post.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" style="background:none; border:none; cursor:pointer; color: #007bff; font-size: 1em;">
+                                    {% if post.is_liked_by(current_user) %}
+                                        ♥ いいね済
+                                    {% else %}
+                                        ♡ いいね
+                                    {% endif %}
+                                </button>
+                            </form>
+                        {% else %}
+                            {# ログインしていない場合はテキストのみ表示 #}
+                            <span style="color: #888;">♡ いいね</span>
+                        {% endif %}
+                        
+                        {# いいね数カウント #}
+                        <span style="font-weight:bold; margin-left: 3px;">
+                            {{ post.likes.count() }}
+                        </span>
+                    </span>
+                    {# ★ いいねボタンエリア終了 ★ #}
+
+                    {# ★ 削除ボタンエリア（自分の投稿のみ表示） ★ #}
                     {% if current_user.is_authenticated and post.user_id == current_user.id %}
                         <span style="margin-left: 15px;">
                             <a href="{{ url_for('delete', id=post.id) }}" 
@@ -47,7 +72,7 @@
                                style="background-color: #dc3545; padding: 2px 8px; font-size: 0.8em;">削除</a>
                         </span>
                     {% endif %}
-                    {# ★ここまで★ #}
+                    {# ★ 削除ボタンエリア終了 ★ #}
 
                 </div>
                 <div class="post-content">

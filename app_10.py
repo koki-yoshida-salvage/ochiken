@@ -29,6 +29,14 @@ def load_user(user_id):
 
 # 4. データベースモデルの定義
 
+# ★ Likeモデルを追加 ★
+class Like(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    # 同じユーザーが同じ投稿に2回いいねできないようにする制限
+    __table_args__ = (db.UniqueConstraint('user_id', 'post_id', name='_user_post_uc'),)
+
 class Thread(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
@@ -47,6 +55,15 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     author = db.relationship('User', backref='posts', lazy=True)
+    
+    # ★ ここを追加: 投稿に紐づくいいねを取得できるようにする
+    likes = db.relationship('Like', backref='post', lazy='dynamic', cascade="all, delete-orphan")
+
+    # ★ ここを追加: 特定のユーザーがこの投稿にいいねしているか確認するメソッド
+    def is_liked_by(self, user):
+        if user.is_anonymous:
+            return False
+        return self.likes.filter_by(user_id=user.id).first() is not None
 
     def __repr__(self):
         return f'<Post {self.id}>'
@@ -64,6 +81,13 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return f'<User {self.username}>'
+    
+    
+    
+# ★★★ 重要: 新しいテーブルを作るための一時的なコード (後で削除) ★★★
+with app.app_context():
+    db.create_all()
+# ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
 
 # ----------------------------------------------------
@@ -273,6 +297,32 @@ def delete(id):
         print(f"削除エラー: {e}")
         flash(f'削除中にエラーが発生しました。', 'error')
         return redirect(url_for('thread_detail', thread_id=thread_id))
+    
+# ★ いいねの切り替え処理 (Like/Unlike Toggle) ★
+@app.route('/like/<int:post_id>', methods=['POST'])
+@login_required
+def toggle_like(post_id):
+    post = db.session.get(Post, post_id)
+    if post is None:
+        abort(404)
+
+    # すでにいいねしているか確認
+    existing_like = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+
+    if existing_like:
+        # すでにいいねしていれば削除（いいね解除）
+        db.session.delete(existing_like)
+        # flash('いいねを取り消しました', 'success') # 毎回出るとうるさいのでコメントアウト
+    else:
+        # まだなら作成（いいね！）
+        new_like = Like(user_id=current_user.id, post_id=post.id)
+        db.session.add(new_like)
+        # flash('いいね！しました', 'success')
+
+    db.session.commit()
+    
+    # 元の画面（スレッド詳細）に戻る
+    return redirect(url_for('thread_detail', thread_id=post.thread_id))
 
 if __name__ == '__main__':
     pass
