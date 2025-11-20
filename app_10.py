@@ -85,8 +85,8 @@ class User(db.Model, UserMixin):
     
     
 # ★★★ 重要: 新しいテーブルを作るための一時的なコード (後で削除) ★★★
-with app.app_context():
-    db.create_all()
+#with app.app_context():
+#    db.create_all()
 # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
 
